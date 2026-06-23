@@ -4,6 +4,7 @@ from google import genai
 from google.genai import types
 from langgraph.graph import StateGraph, END
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -99,6 +100,52 @@ def writer_node(state:GraphState) -> dict:
     )
 
     return {"post_final": response.text, "feedback": None}
+
+
+
+def supervisor_node(state:GraphState) -> dict:
+    print("\n👑 [AGENTE SUPERVISOR]: Avaliando o trabalho do time...")
+    tema = state["tema"]
+    pesquisa = state.get("pesquisa","Nenhuma pesquisa feita ainda.")
+    post_final = state.get("post_final", "Nenhum post escrito ainda.")
+
+    prompt = f"""
+    Você é o Diretor de Criação e Supervisor de uma agência de Marketing Digital de Elite.
+    Sua função é avaliar o progresso do time e decidir estritamente qual deve ser o próximo passo do fluxo de trabalho.
+    
+    Tema do Projeto: "{tema}"
+    
+    Status Atual do Trabalho:
+    - Pesquisa Coletada: {pesquisa}
+    - Última Versão do Post Criada: {post_final}
+    
+    Suas Opções de Próxima Ação:
+    - "pesquisar": Escolha isso se a pesquisa atual estiver vazia, incompleta ou se você achar que faltam dados cruciais para o tema.
+    - "redigir": Escolha isso se o post ainda não foi escrito OU se você leu o post atual e achou que ele pode ser melhorado (nesse caso, você DEVE preencher a justificativa com o que o redator precisa corrigir).
+    - "finalizar": Escolha isso APENAS se o post estiver perfeito, magnético, sem erros e pronto para publicação no LinkedIn.
+    """
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=SupervisorDecision
+        )
+    )
+
+    decisao = json.loads(response.text)
+
+    print(f"➡️ [DECISÃO DO SUPERVISOR]: Próxima Ação -> {decisao['proxima_acao'].upper()}")
+    print(f"💬 [JUSTIFICATIVA]: {decisao['justificativa']}")
+
+    feedback_to_team = decisao["justificativa"] if decisao["proxima_acao"] == "redigir" else None
+
+    return {
+        "proxima_acao": decisao["proxima_acao"],
+        "feedback": feedback_to_team
+    }
+
 
 # TESTE
 if __name__ == "__main__":
