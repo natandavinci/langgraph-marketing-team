@@ -6,7 +6,7 @@ from langgraph.graph import StateGraph, END
 import os
 import json
 from dotenv import load_dotenv
-
+from langchain_core.runnables.graph import MermaidDrawMethod
 load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -185,6 +185,13 @@ app = graph.compile()
 
 # TESTE DO GRAFO COMPLETO
 if __name__ == "__main__":
+    png_bytes = app.get_graph().draw_mermaid_png(
+                    draw_method=MermaidDrawMethod.API
+    )
+
+    with open("grafo_exemplo1.png", "wb") as f:
+        f.write(png_bytes)
+
     estado_inicial: GraphState = {
         "tema": "O impacto da Inteligência Artificial no mercado de Advocacia em 2026",
         "pesquisa": None,
