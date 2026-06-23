@@ -50,3 +50,77 @@ def researcher_node(state: GraphState) -> dict:
 
     return {"pesquisa": response.text}
 
+
+
+def writer_node(state:GraphState) -> dict:
+    print("\n✍️ [AGENTE REDATOR]: Transformando dados em um post de alto impacto...")
+    tema = state["tema"]
+    pesquisa = state["pesquisa"]
+    feedback_supervisor = state.get("feedback")
+
+    if feedback_supervisor:
+        prompt = f"""
+        Você é um Copywriter Sênior especialista em LinkedIn.
+        Você criou um post sobre o tema "{tema}", mas o Supervisor rejeitou com o seguinte feedback:
+        
+        "{feedback_supervisor}"
+        
+        Aqui está a versão que você escreveu anteriormente:
+        ---
+        {state["post_final"]}
+        ---
+        
+        Reescreva o post aplicando as correções cirurgicamente, mantendo o tom profissional, magnético e focado em engajamento.
+        """
+
+    else:
+        prompt = f"""
+        Você é um Copywriter Sênior especialista em posts de alta performance para o LinkedIn.
+        Sua tarefa é transformar o relatório de pesquisa bruta abaixo em um post magnético.
+        
+        Tema: "{tema}"
+        
+        Dados da Pesquisa de Mercado:
+        ---
+        {pesquisa}
+        ---
+        
+        Diretrizes do Post:
+        1. **Gancho (Hook) Forte:** Comece com uma frase que faça o advogado parar o feed.
+        2. **Conteúdo:** Use os dados de impacto e conceitos (como Augmentação Jurídica) que a pesquisa trouxe.
+        3. **Formatação:** Use frases curtas, espaçadas (fácil leitura no celular) e bullet points bem organizados.
+        4. **CTA (Chamada para Ação):** Termine com uma pergunta instigante para gerar comentários.
+        5. Use no máximo 3 a 5 hashtags relevantes ao final.
+        """
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+
+    return {"post_final": response.text, "feedback": None}
+
+# TESTE
+if __name__ == "__main__":
+    # 1. Criamos um estado inicial simulando a entrada do usuário
+    estado_teste: GraphState = {
+        "tema": "O impacto da Inteligência Artificial no mercado de Advocacia em 2026",
+        "pesquisa": None,
+        "post_final": None,
+        "feedback": None,
+        "proxima_acao": None
+    }
+
+   # 1. Roda o Pesquisador
+    resultado_pesquisa = researcher_node(estado_teste)
+    estado_teste["pesquisa"] = resultado_pesquisa["pesquisa"]
+    
+    print("\n--- ✅ Pesquisa Concluída! Passando dados para o Redator... ---")
+
+    # 2. Roda o Redator passando o estado atualizado com a pesquisa
+    resultado_redator = writer_node(estado_teste)
+    
+    print("\n🚀 POST GERADO PELO REDATOR PARA O LINKEDIN:")
+    print("-" * 60)
+    print(resultado_redator["post_final"])
+    print("-" * 60)
