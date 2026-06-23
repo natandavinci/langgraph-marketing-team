@@ -146,11 +146,46 @@ def supervisor_node(state:GraphState) -> dict:
         "feedback": feedback_to_team
     }
 
+def router_supervisor(state: GraphState):
+    return state["proxima_acao"]
 
-# TESTE
+# Creating graph
+graph = StateGraph(GraphState)
+
+graph.add_node("researcher_node",
+               researcher_node)
+
+graph.add_node("writer_node",
+               writer_node)
+
+graph.add_node("supervisor_node",
+               supervisor_node)
+
+# EDGES
+
+graph.set_entry_point("researcher_node")
+
+graph.add_edge("researcher_node",
+               "writer_node")
+
+graph.add_edge("writer_node",
+               "supervisor_node")
+
+graph.add_conditional_edges("supervisor_node",
+                            router_supervisor,
+                            {
+                                "pesquisar": "researcher_node",
+                                "redigir": "writer_node",
+                                "finalizar": END
+                            }
+                            )
+
+
+app = graph.compile()
+
+# TESTE DO GRAFO COMPLETO
 if __name__ == "__main__":
-    # 1. Criamos um estado inicial simulando a entrada do usuário
-    estado_teste: GraphState = {
+    estado_inicial: GraphState = {
         "tema": "O impacto da Inteligência Artificial no mercado de Advocacia em 2026",
         "pesquisa": None,
         "post_final": None,
@@ -158,16 +193,13 @@ if __name__ == "__main__":
         "proxima_acao": None
     }
 
-   # 1. Roda o Pesquisador
-    resultado_pesquisa = researcher_node(estado_teste)
-    estado_teste["pesquisa"] = resultado_pesquisa["pesquisa"]
+    print("🔥 Iniciando a Agência Multi-Agente de Marketing...")
     
-    print("\n--- ✅ Pesquisa Concluída! Passando dados para o Redator... ---")
-
-    # 2. Roda o Redator passando o estado atualizado com a pesquisa
-    resultado_redator = writer_node(estado_teste)
-    
-    print("\n🚀 POST GERADO PELO REDATOR PARA O LINKEDIN:")
-    print("-" * 60)
-    print(resultado_redator["post_final"])
-    print("-" * 60)
+    # Executamos o grafo e acompanhamos as entregas
+    for evento in app.stream(estado_inicial, stream_mode="values"):
+        if evento.get("post_final") and evento.get("proxima_acao") == "finalizar":
+            print("\n🏆 [SISTEMA]: Post Aprovado pelo Supervisor e Pronto para Publicação!")
+            print("-" * 60)
+            print(evento["post_final"])
+            print("-" * 60)
+            break
